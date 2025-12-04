@@ -1,0 +1,19 @@
+# Ignore Python virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git
+.git
+.gitignore
+
+# Environment files
+*.env
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
