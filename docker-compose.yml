@@ -15,7 +15,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydb
     container_name: fastapi
     restart: always
     env_file:
@@ -26,7 +29,10 @@ services:
       - "8000:8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=http://localhost:8000
     container_name: react
     restart: always
     ports:
