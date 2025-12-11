@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy only package files first for caching
 COPY package*.json ./
 
-ENV REACT_APP_API_URL=http://localhost:8000
-#ENV REACT_APP_API_URL=https://backend-weathered-field-5170.fly.dev
+
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # Install dependencies (Axios will be included)
 RUN npm install
