@@ -12,10 +12,11 @@ export default function ProfileDetail({ userId, onBack, onAccountDeleted, onUpda
   }, [userId]);
 
   const handleUpdate = async (e) => {
+    const apiUrl = process.env.REACT_APP_API_URL;
     e.preventDefault();
     setMsg(''); setErr('');
     try {
-      const res = await axios.put(`http://localhost:8000/update-user/${userId}`, form);
+      const res = await axios.put(`${apiUrl}/update-user/${userId}`, form);
       setMsg('Profile updated');
       if (onUpdated) onUpdated(res.data);
     } catch (err) {
@@ -24,9 +25,10 @@ export default function ProfileDetail({ userId, onBack, onAccountDeleted, onUpda
   };
 
   const handleDelete = async () => {
+    const apiUrl = process.env.REACT_APP_API_URL;
     if (!window.confirm('Delete account? This cannot be undone.')) return;
     try {
-      await axios.delete(`http://localhost:8000/delete-user/${userId}`);
+      await axios.delete(`${apiUrl}/delete-user/${userId}`);
       localStorage.removeItem('sd_user');
       if (onAccountDeleted) onAccountDeleted();
     } catch (err) {
