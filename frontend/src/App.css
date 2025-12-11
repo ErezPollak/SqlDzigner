@@ -1,38 +1,58 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.App-root {
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   min-height: 100vh;
+  background: linear-gradient(180deg, #0f1724 0%, #071226 60%);
+  color: #e6eef8;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  padding: 32px;
 }
 
-.App-link {
-  color: #61dafb;
+/* Auth card */
+.auth-card {
+  width: 420px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 28px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.6);
 }
+.auth-header h1 { margin: 0; font-size: 22px; }
+.subtitle { color: #9fb3d6; font-size: 13px; margin-top: 6px; }
+.auth-tabs { display:flex; gap:8px; margin:16px 0; }
+.auth-tabs button { flex:1; padding:8px 12px; border-radius:8px; border:0; background:transparent; color:#bcd7f8; cursor:pointer }
+.auth-tabs button.active { background:linear-gradient(90deg,#2b6cb0,#2b8cd6); color:white }
+.auth-form { display:flex; flex-direction:column; gap:8px; }
+.auth-form label { text-align:left; font-size:13px; color:#bcd7f8 }
+.auth-form input { padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.25); color:inherit }
+.auth-error { color:#ffb4b4; background: rgba(255,20,20,0.06); padding:8px; border-radius:6px; margin-bottom:8px }
+.auth-success { color:#b7f5c7; background: rgba(20,255,20,0.03); padding:8px; border-radius:6px; margin-bottom:8px }
+.auth-footnote { font-size:12px; color:#9fb3d6; margin-top:14px; }
+.primary { background:linear-gradient(90deg,#2b6cb0,#2b8cd6); color:white; border:0; padding:10px 12px; border-radius:10px; cursor:pointer }
+.ghost { background:transparent; color:#bcd7f8; border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px }
+.secondary { background:transparent; color:#bcd7f8; border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* App shell / Home */
+.app-shell { width:100%; max-width:1100px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; overflow:hidden; box-shadow: 0 12px 50px rgba(2,6,23,0.7); }
+.app-header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid rgba(255,255,255,0.03) }
+.brand { font-weight:700; color:#eaf6ff }
+.header-actions button { margin-left:8px }
+.home-main { padding:40px; }
+.hero h2 { margin:0 0 6px 0 }
+.hero p { color:#9fb3d6 }
+.placeholder-canvas { margin-top:18px; height:360px; border-radius:8px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); display:flex; align-items:center; justify-content:center; color:#9fb3d6; border:1px dashed rgba(255,255,255,0.03) }
+.app-footer { padding:12px 20px; color:#93b2d8; font-size:13px; border-top:1px solid rgba(255,255,255,0.02) }
+
+/* Profile */
+.profile-card { width:420px; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); }
+.profile-card .back { background:transparent; border:0; color:#9fb3d6; margin-bottom:8px; cursor:pointer }
+.profile-form { display:flex; flex-direction:column; gap:8px }
+.profile-actions { display:flex; gap:8px; margin-top:10px }
+.danger { background: linear-gradient(90deg,#b33a3a,#d24a4a); color:white; border:0; padding:8px 12px; border-radius:8px; cursor:pointer }
+
+@media (max-width:600px) {
+  .App-root { padding:16px }
+  .auth-card, .profile-card { width:100% }
+  .placeholder-canvas { height:220px }
 }
