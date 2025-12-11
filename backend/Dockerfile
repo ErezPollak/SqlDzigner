@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydb
+#ENV DATABASE_URL=postgresql://neondb_owner:npg_WvVCLKX4Y0kP@ep-snowy-pine-a9bz947d-pooler.gwc.azure.neon.tech/neondb?sslmode=require&channel_binding=require
 
 # Expose port
 EXPOSE 8000

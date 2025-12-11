@@ -9,10 +9,13 @@ export default function Auth({ onAuth }) {
   const [success, setSuccess] = useState('');
 
   const handleLogin = async (e) => {
+    const apiUrl = process.env.REACT_APP_API_URL;
+    console.log("API URL ENV:", process.env.REACT_APP_API_URL);
+    console.log("API URL:", apiUrl);
     e.preventDefault();
     setError('');
     try {
-      const res = await axios.post('http://localhost:8000/login', login);
+      const res = await axios.post(`${apiUrl}/login`, login);
       if (res.data && res.data.user) {
         const user = res.data.user;
         localStorage.setItem('sd_user', JSON.stringify({ id: user.id }));
@@ -24,11 +27,12 @@ export default function Auth({ onAuth }) {
   };
 
   const handleRegister = async (e) => {
+    const apiUrl = process.env.REACT_APP_API_URL;
     e.preventDefault();
     setError('');
     setSuccess('');
     try {
-      await axios.post('http://localhost:8000/register', register);
+      await axios.post(`${apiUrl}/register`, register);
       setSuccess('Registered successfully — you can now log in');
       setRegister({ username: '', email: '', password: '' });
       setMode('login');

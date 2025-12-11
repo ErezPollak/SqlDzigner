@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-
-load_dotenv()
 from sqlalchemy.exc import IntegrityError
 import psycopg2
 from fastapi import FastAPI, Depends, HTTPException, Body
