@@ -297,6 +297,23 @@ def read_fields_by_table(table_id: UUID4, db: Session = Depends(get_db)):
     
 
 
+@app.get("/fields/schema/{schema_id}", response_model=list[FieldRead])
+def read_fields_by_table(schema_id: UUID4, db: Session = Depends(get_db)):
+    table_ids = db.query(Table.id).filter(Table.schema == schema_id).all()
+    if not table_ids:
+        raise HTTPException(status_code=404, detail="Schema has no tables or does not exist")
+
+    # Extract IDs from tuples returned by SQLAlchemy
+    table_ids = [tid[0] for tid in table_ids]
+
+    # Get all fields for those table IDs
+    fields = db.query(Field).filter(Field.table.in_(table_ids)).all()
+    if not fields:
+        raise HTTPException(status_code=404, detail="No fields found for this table")
+    return fields
+    
+
+
 @app.put("/fields/{field_id}", response_model=FieldRead)
 def update_field(field_id: UUID4, field_update: FieldCreate, db: Session = Depends(get_db)):
     field = db.query(Field).filter(Field.id == field_id).first()
