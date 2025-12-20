@@ -21,8 +21,6 @@ services:
         - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydb
     container_name: fastapi
     restart: always
-    env_file:
-      - ./backend/.env
     depends_on:
       - db
     ports:
