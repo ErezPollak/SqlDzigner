@@ -1,4 +1,5 @@
 import React from 'react';
+import SchemaDesigner from '../componants/SchemaDesigner'
 
 export default function Home({ onOpenProfile, onLogout }) {
   return (
@@ -15,7 +16,7 @@ export default function Home({ onOpenProfile, onLogout }) {
         <section className="hero">
           <h2>Welcome to SQL Dezigner</h2>
           <p>This is your workspace. Start by creating a new design or open an existing one.</p>
-          <div className="placeholder-canvas">Your SQL designer will appear here.</div>
+          <div className="placeholder-canvas"><SchemaDesigner/></div>
         </section>
       </main>
 

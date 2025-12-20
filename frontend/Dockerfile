@@ -9,6 +9,7 @@ COPY package*.json ./
 
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
+#ENV REACT_APP_API_URL=https://sqldzignerbe-825426675078.europe-west1.run.app/
 
 # Install dependencies (Axios will be included)
 RUN npm install
