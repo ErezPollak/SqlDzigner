@@ -163,7 +163,8 @@ const SQL_RELATION_TYPES = ["OO", "OM", "MM"];
 
 function SchemaManager({ userId }) {
 
-  const API_BASE = process.env.REACT_APP_API_URL;
+  // fallback to localhost:8000 (matches docker-compose/.env) when env var is not provided
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
   const [schemas, setSchemas] = useState([]);
   const [selectedSchema, setSelectedSchema] = useState(null);
@@ -171,11 +172,18 @@ function SchemaManager({ userId }) {
   const [selectedTable, setSelectedTable] = useState(null);
   const [fields, setFields] = useState([]);
   const [schemaFields, setSchemaFields] = useState([]);
+  const [schemaFieldsLoaded, setSchemaFieldsLoaded] = useState(false);
   const [relations, setRelations] = useState([]);
+  const [fieldsLoaded, setFieldsLoaded] = useState(false);
   const [newSchemaName, setNewSchemaName] = useState("");
   const [newTableName, setNewTableName] = useState("");
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState("VARCHAR");
+  const [status, setStatus] = useState(null); // { type: 'success'|'error'|'info', text }
+  const [creatingSchema, setCreatingSchema] = useState(false);
+  const [creatingTable, setCreatingTable] = useState(false);
+  const [creatingField, setCreatingField] = useState(false);
+  const [addingRelation, setAddingRelation] = useState(false);
 
   // --- Relation dialog ---
   const [relationDialogOpen, setRelationDialogOpen] = useState(false);
@@ -195,29 +203,74 @@ function SchemaManager({ userId }) {
   // --- Fetch tables for selected schema ---
   useEffect(() => {
     if (!selectedSchema) return;
+    // reset dependent selections/data when schema changes
+    setSelectedTable(null);
+    setFields([]);
+    setRelations([]);
+
     axios
       .get(`${API_BASE}/tables/schema/${selectedSchema.id}`)
-      .then((res) => setTables(res.data))
-      .catch((err) => console.error(err));
+      .then((res) => {
+        setTables(res.data);
+        setStatus(null);
+      })
+      .catch((err) => {
+        setTables([]);
+        console.error(err);
+        setStatus({ type: 'error', text: 'Failed to load tables for schema.' });
+      });
   }, [selectedSchema]);
 
 
    // --- Fetch fields for selected schema ---
   useEffect(() => {
     if (!selectedSchema) return;
+    setSchemaFieldsLoaded(false);
     axios
       .get(`${API_BASE}/fields/schema/${selectedSchema.id}`)
-      .then((res) => setSchemaFields(res.data))
-      .catch((err) => console.error(err));
+      .then((res) => {
+        setSchemaFields(res.data || []);
+        setSchemaFieldsLoaded(true);
+        setStatus(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        // If backend returns 404 or 204, treat as 'no fields yet' not an error
+        const code = err?.response?.status;
+        if (code === 404 || code === 204) {
+          setSchemaFields([]);
+          setSchemaFieldsLoaded(true);
+          setStatus({ type: 'info', text: 'No fields yet. Add one below.' });
+          return;
+        }
+        setSchemaFieldsLoaded(true);
+        setStatus({ type: 'error', text: 'Failed to load fields for schema.' });
+      });
   }, [selectedSchema]);
 
   // --- Fetch fields for selected table ---
   useEffect(() => {
     if (!selectedTable) return;
+    setFieldsLoaded(false);
     axios
       .get(`${API_BASE}/fields/table/${selectedTable.id}`)
-      .then((res) => setFields(res.data))
-      .catch((err) => console.error(err));
+      .then((res) => {
+        setFields(res.data || []);
+        setFieldsLoaded(true);
+        setStatus(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        const code = err?.response?.status;
+        if (code === 404 || code === 204) {
+          setFields([]);
+          setFieldsLoaded(true);
+          setStatus({ type: 'info', text: 'No fields yet. Add one below.' });
+          return;
+        }
+        setFieldsLoaded(true);
+        setStatus({ type: 'error', text: 'Failed to load fields for table.' });
+      });
   }, [selectedTable]);
 
   // --- Fetch relations for selected table ---
@@ -240,11 +293,35 @@ function SchemaManager({ userId }) {
 
   // --- CRUD Handlers ---
   const createSchema = () => {
-    if (!newSchemaName) return;
+    if (!newSchemaName || !newSchemaName.trim()) {
+      setStatus({ type: 'info', text: 'Please enter a schema name.' });
+      return;
+    }
+    const ownerVal = userId ? Number(userId) : null;
+    if (!ownerVal || Number.isNaN(ownerVal) || ownerVal <= 0) {
+      setStatus({ type: 'error', text: 'Missing or invalid userId; please re-login.' });
+      return;
+    }
+
+    const payload = { owner: ownerVal, name: newSchemaName.trim() };
+    setCreatingSchema(true);
+    setStatus(null);
+
     axios
-      .post(`${API_BASE}/schemas/`, { owner: userId, name: newSchemaName })
-      .then((res) => setSchemas([...schemas, res.data]))
-      .finally(() => setNewSchemaName(""));
+      .post(`${API_BASE}/schemas/`, payload)
+      .then((res) => {
+        setSchemas((prev) => [...prev, res.data]);
+        setStatus({ type: 'success', text: 'Schema created.' });
+      })
+      .catch((err) => {
+        console.error('Create schema failed:', err?.response || err);
+        const msg = err?.response?.data ? JSON.stringify(err.response.data) : err.message;
+        setStatus({ type: 'error', text: 'Failed to create schema: ' + msg });
+      })
+      .finally(() => {
+        setCreatingSchema(false);
+        setNewSchemaName("");
+      });
   };
 
   const deleteSchema = (schemaId) => {
@@ -255,11 +332,28 @@ function SchemaManager({ userId }) {
   };
 /////////////////////////////
   const createTable = () => {
-    if (!selectedSchema || !newTableName) return;
+    if (!selectedSchema) {
+      setStatus({ type: 'error', text: 'Select a schema to add a table.' });
+      return;
+    }
+    if (!newTableName || !newTableName.trim()) {
+      setStatus({ type: 'info', text: 'Please enter a table name.' });
+      return;
+    }
+    setCreatingTable(true);
+    setStatus(null);
+
     axios
-      .post(`${API_BASE}/tables/`, { schema: selectedSchema.id, name: newTableName })
-      .then((res) => setTables([...tables, { ...res.data, name: newTableName }]))
-      .finally(() => setNewTableName(""));
+      .post(`${API_BASE}/tables/`, { schema: selectedSchema.id, name: newTableName.trim() })
+      .then((res) => setTables((prev) => [...prev, res.data]))
+      .catch((err) => {
+        console.error('Create table failed:', err?.response || err);
+        setStatus({ type: 'error', text: 'Failed to create table: ' + (err?.message || '') });
+      })
+      .finally(() => {
+        setCreatingTable(false);
+        setNewTableName("");
+      });
   };
 
   const deleteTable = (tableId) => {
@@ -275,15 +369,34 @@ function SchemaManager({ userId }) {
 
 
   const createField = () => {
-    if (!selectedTable || !newFieldName) return;
+    if (!selectedTable) {
+      setStatus({ type: 'error', text: 'Select a table to add a field.' });
+      return;
+    }
+    if (!newFieldName || !newFieldName.trim()) {
+      setStatus({ type: 'info', text: 'Please enter a field name.' });
+      return;
+    }
+    setCreatingField(true);
+    setStatus(null);
+
     axios
       .post(`${API_BASE}/fields/`, {
         table: selectedTable.id,
-        name: newFieldName,
+        name: newFieldName.trim(),
         type: newFieldType,
       })
-      .then((res) => setFields([res.data]))
+      .then((res) => {
+        setFields((prev) => [...prev, res.data]);
+        setSchemaFields((prev) => [...prev, res.data]);
+        setStatus({ type: 'success', text: 'Field created.' });
+      })
+      .catch((err) => {
+        console.error('Create field failed:', err?.response || err);
+        setStatus({ type: 'error', text: 'Failed to create field: ' + (err?.message || '') });
+      })
       .finally(() => {
+        setCreatingField(false);
         setNewFieldName("");
         setNewFieldType("VARCHAR");
       });
@@ -301,7 +414,13 @@ function SchemaManager({ userId }) {
   };
 
   const addRelation = () => {
-    if (!relationFromField || !relationToField) return;
+    if (!relationFromField || !relationToField) {
+      setStatus({ type: 'info', text: 'Select a source and target field for the relation.' });
+      return;
+    }
+    setAddingRelation(true);
+    setStatus(null);
+
     axios
       .post(`${API_BASE}/relations/`, {
         value_from: relationFromField.id,
@@ -309,105 +428,159 @@ function SchemaManager({ userId }) {
         type: relationType,
       })
       .then((res) => {
-        setRelations([res.data]);
+        setRelations((prev) => [...prev, res.data]);
+        setStatus({ type: 'success', text: 'Relation added.' });
         setRelationDialogOpen(false);
         setRelationFromField(null);
         setRelationToField(null);
       })
-      .catch((err) => alert("Failed to add relation: " + err));
+      .catch((err) => {
+        console.error('Add relation failed:', err?.response || err);
+        setStatus({ type: 'error', text: 'Failed to add relation: ' + (err?.message || '') });
+      })
+      .finally(() => setAddingRelation(false));
   };
 
   return (
     <div>
       <h2>My Schemas</h2>
-      <input
-        value={newSchemaName}
-        placeholder="New Schema Name"
-        onChange={(e) => setNewSchemaName(e.target.value)}
-      />
-      <button onClick={createSchema}>Create Schema</button>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <input
+          className="small-input"
+          value={newSchemaName}
+          placeholder="New Schema Name"
+          onChange={(e) => setNewSchemaName(e.target.value)}
+          disabled={creatingSchema}
+        />
+        <button className="chip primary" onClick={createSchema} disabled={creatingSchema || !newSchemaName.trim()}> 
+          {creatingSchema ? 'Creating...' : 'Create Schema'}
+        </button>
+      </div>
+      {status && (
+        <div style={{ marginTop: 8, color: status.type === 'error' ? 'darkred' : status.type === 'success' ? 'green' : 'black' }}>
+          {status.text}
+        </div>
+      )}
 
-      <ul>
+      <ul className="schema-list">
         {schemas.map((schema) => (
-          <li key={schema.id}>
-            <strong>{schema.name}</strong>{" "}
-            <button onClick={() => setSelectedSchema(selectedSchema?.id === schema.id ? null : schema)}>
-              {selectedSchema?.id === schema.id ? "Close" : "View"}
-            </button>{" "}
-            <button onClick={() => deleteSchema(schema.id)}>Delete</button>
+          <li key={schema.id} className="schema-item">
+            <div className="left">
+              <strong>{schema.name}</strong>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className={`chip ${selectedSchema?.id === schema.id ? 'ghost' : 'secondary'}`} onClick={() => setSelectedSchema(selectedSchema?.id === schema.id ? null : schema)}>
+                {selectedSchema?.id === schema.id ? 'Close' : 'View'}
+              </button>
+              <button className="chip danger" onClick={() => deleteSchema(schema.id)}>Delete</button>
+            </div>
 
             {selectedSchema?.id === schema.id && (
-              <div style={{ marginLeft: "20px" }}>
-                <h3>Tables</h3>
-                <ul>
-                  {tables.map((table) => (
-                    <li key={table.id}>
-                      <strong>{table.name || "Unnamed Table"}</strong>{" "}
-                      <button
-                        onClick={() =>
-                          setSelectedTable(selectedTable?.id === table.id ? null : table)
-                        }
-                      >
-                        {selectedTable?.id === table.id ? "Close" : "Edit"}
-                      </button>{" "}
-                      <button onClick={() => deleteTable(table.id)}>Delete</button>
-                    </li>
-                  ))}
-                </ul>
-                <input
-                  value={newTableName}
-                  placeholder="New Table Name"
-                  onChange={(e) => setNewTableName(e.target.value)}
-                />
-                <button onClick={createTable}>Add Table</button>
-
-                {selectedTable && (
-                  <div style={{ marginLeft: "20px" }}>
-                    <h4>Fields in {selectedTable.name}</h4>
-                    <ul>
-                      {fields.map((f) => (
-                        <li key={f.id}>
-                          {f.name} ({f.type}){" "}
-                          <button onClick={() => deleteField(f.id)}>Delete</button>{" "}
-                          <button onClick={() => openRelationDialog(f)}>Add Relation</button>
-                          <div>
-                            <strong>Relations:</strong>{" "}
-                            {relations
-                              .filter(
-                                (r) => r.value_from === f.id || r.value_to === f.id
-                              )
-                              .map((r) => (
-                                <span key={r.id}>
-                                  {r.value_from === f.id ? "→ " : "← "}
-                                  {r.value_from === f.id
-                                    ? schemaFields.find((fld) => fld.id === r.value_to)?.name + " (" + getTableById(schemaFields.find((fld) => fld.id === r.value_to)?.table).name +")" 
-                                    : schemaFields.find((fld) => fld.id === r.value_from)?.name+ " (" + getTableById(schemaFields.find((fld) => fld.id === r.value_to)?.table).name +")" }{" "}
-
-                                  ({r.type})
-                                </span>
-                              ))}
+              <div style={{ marginTop: 12 }}>
+                <div className="split-grid">
+                  <div className="left-col">
+                    <h3>Tables</h3>
+                    <ul className="tables-list">
+                      {tables.map((table) => (
+                        <li key={table.id} className="table-item">
+                          <div className="left"><strong>{table.name || 'Unnamed Table'}</strong></div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className={`chip ${selectedTable?.id === table.id ? 'ghost' : 'secondary'}`} onClick={() => setSelectedTable(selectedTable?.id === table.id ? null : table)}>
+                              {selectedTable?.id === table.id ? 'Close' : 'Edit'}
+                            </button>
+                            <button className="chip danger" onClick={() => deleteTable(table.id)}>Delete</button>
                           </div>
                         </li>
                       ))}
                     </ul>
-                    <input
-                      value={newFieldName}
-                      placeholder="Field Name"
-                      onChange={(e) => setNewFieldName(e.target.value)}
-                    />
-                    <select
-                      value={newFieldType}
-                      onChange={(e) => setNewFieldType(e.target.value)}
-                    >
-                      {["INT", "VARCHAR", "TEXT", "DATE", "BOOLEAN", "FLOAT"].map(
-                        (type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        )
-                      )}
-                    </select>
-                    <button onClick={createField}>Add Field</button>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <input className="small-input" value={newTableName} placeholder="New Table Name" onChange={(e) => setNewTableName(e.target.value)} />
+                      <button className="chip primary" onClick={createTable}>Add Table</button>
+                    </div>
+                  </div>
+
+                  <div className="right-col">
+                    {selectedTable ? (
+                      <div>
+                        <h3>Editing: {selectedTable.name}</h3>
+                        <h4>Fields</h4>
+                        <ul className="fields-list">
+                          {fields.map((f) => (
+                            <li key={f.id} className="field-item">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span className="field-name">{f.name}</span>
+                                <span className="field-type">{f.type}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <button className="chip secondary" onClick={() => deleteField(f.id)}>Delete</button>
+                                <button className="chip ghost" onClick={() => openRelationDialog(f)}>Add Relation</button>
+                              </div>
+                              <div className="field-relations">
+                                <strong>Relations:</strong>
+                                {relations
+                                  .filter((r) => r.value_from === f.id || r.value_to === f.id)
+                                  .map((r) => (
+                                    <div key={r.id} className="relation-item">
+                                      {r.value_from === f.id ? '→ ' : '← '}
+                                      {r.value_from === f.id
+                                        ? (schemaFields.find((fld) => fld.id === r.value_to)?.name || 'unknown') + ' (' + (getTableById(schemaFields.find((fld) => fld.id === r.value_to)?.table)?.name || 'unknown') + ')'
+                                        : (schemaFields.find((fld) => fld.id === r.value_from)?.name || 'unknown') + ' (' + (getTableById(schemaFields.find((fld) => fld.id === r.value_from)?.table)?.name || 'unknown') + ')'}
+                                      {' '}
+                                      ({r.type})
+                                    </div>
+                                  ))}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                        {!fieldsLoaded && <div className="muted">Loading fields...</div>}
+                        {fieldsLoaded && fields.length === 0 && <div className="muted">No fields yet. Add one below.</div>}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                          <input className="small-input" value={newFieldName} placeholder="Field Name" onChange={(e) => setNewFieldName(e.target.value)} />
+                          <select className="small-input" value={newFieldType} onChange={(e) => setNewFieldType(e.target.value)}>
+                            {["INT", "VARCHAR", "TEXT", "DATE", "BOOLEAN", "FLOAT"].map((type) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          <button className="chip primary" onClick={createField}>Add Field</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="muted">Select a table to edit its fields</div>
+                    )}
+                  </div>
+                </div>
+
+                {relationDialogOpen && (
+                  <div className="modal-overlay" onClick={() => setRelationDialogOpen(false)}>
+                    <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <h4 className="modal-title">Add Relation from "{relationFromField?.name}"</h4>
+                        <button className="chip ghost" onClick={() => setRelationDialogOpen(false)}>Close</button>
+                      </div>
+
+                      <div className="modal-row">
+                        <label>To Field</label>
+                        <select className="modal-select" onChange={(e) => setRelationToField(schemaFields.find((f) => f.id === e.target.value))} value={relationToField?.id || ''}>
+                          <option value="">Select field</option>
+                          {schemaFields.filter((f) => f.id !== relationFromField?.id).map((f) => (
+                            <option key={f.id} value={f.id}>{f.name} ({getTableById(f.table).name})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="modal-row">
+                        <label>Type</label>
+                        <select className="modal-select" value={relationType} onChange={(e) => setRelationType(e.target.value)}>
+                          {SQL_RELATION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="modal-actions">
+                        <button className="chip primary" onClick={addRelation} disabled={!relationToField}>Add Relation</button>
+                        <button className="chip secondary" onClick={() => setRelationDialogOpen(false)}>Cancel</button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -415,54 +588,6 @@ function SchemaManager({ userId }) {
           </li>
         ))}
       </ul>
-
-      {/* --- Relation Dialog --- */}
-      {relationDialogOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: "20%",
-            left: "30%",
-            width: "40%",
-            padding: "20px",
-            backgroundColor: "white",
-            border: "1px solid black",
-            zIndex: 100,
-          }}
-        >
-          <h3>Add Relation from "{relationFromField?.name}"</h3>
-          <label>To Field:</label>
-          <select
-            onChange={(e) =>
-              setRelationToField(schemaFields.find((f) => f.id === e.target.value))
-            }
-          >
-            <option value="">Select field</option>
-            {schemaFields
-              .filter((f) => f.id !== relationFromField?.id)
-              .map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} ({getTableById(f.table).name})
-                </option>
-              ))}
-          </select>
-          <label>Type:</label>
-          <select
-            value={relationType}
-            onChange={(e) => setRelationType(e.target.value)}
-          >
-            {SQL_RELATION_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          <div>
-            <button onClick={addRelation}>Add Relation</button>
-            <button onClick={() => setRelationDialogOpen(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -488,7 +613,7 @@ function SchemaManager({ userId }) {
 
 
 
-export default function Home({ onOpenProfile, onLogout }) {
+export default function Home({ onOpenProfile, onLogout, userId }) {
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -508,7 +633,7 @@ export default function Home({ onOpenProfile, onLogout }) {
               <DesignerInner />
               </ReactFlowProvider> */}
           {/* </div> */}
-           <SchemaManager userId={1} />
+           <SchemaManager userId={userId} />
 
         </section>
       </main>
