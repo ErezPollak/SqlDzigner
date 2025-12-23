@@ -77,7 +77,7 @@ class Table(Base):
     )
 
 class Field(Base):
-    __tablename__ = "fields"         
+    __tablename__= "fields"         
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     table = Column(UUID(as_uuid=True),ForeignKey("tables.id", ondelete="CASCADE"),nullable=False)
@@ -86,12 +86,12 @@ class Field(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    __table_args__ = (
+    __table_args__= (
         UniqueConstraint('table', 'name', name='uniq field name per table'),
     )
 
 class Relation(Base):
-    __tablename__ = "relations"         
+    __tablename__= "relations"         
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     value_from = Column(UUID(as_uuid=True),ForeignKey("fields.id", ondelete="CASCADE"),nullable=False)
@@ -103,3 +103,7 @@ class Relation(Base):
     __table_args__ = (
         UniqueConstraint('value_from', 'value_to', name='only one relation between two fields'),
     )
+
+
+
+
