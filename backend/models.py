@@ -41,7 +41,7 @@ SQL_RELATION_TYPES = (
 )
 
 class User(Base):
-    _tablename_ = "users"
+    __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False)
@@ -54,7 +54,7 @@ class User(Base):
 
 
 class Schema(Base):
-    _tablename_ = "schemas"
+    __tablename__ = "schemas"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner = Column(Integer,ForeignKey("users.id", ondelete="CASCADE"),nullable=False)
@@ -64,7 +64,7 @@ class Schema(Base):
 
 
 class Table(Base):
-    _tablename_ = "tables"         
+    __tablename__ = "tables"         
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String,nullable=False)
@@ -72,12 +72,12 @@ class Table(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    _table_args_ = (
+    __table_args__ = (
         UniqueConstraint('schema', 'name', name='uniq table name per schema'),
     )
 
 class Field(Base):
-    _tablename_ = "fields"         
+    __tablename__= "fields"         
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     table = Column(UUID(as_uuid=True),ForeignKey("tables.id", ondelete="CASCADE"),nullable=False)
@@ -86,12 +86,12 @@ class Field(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    _table_args_ = (
+    __table_args__= (
         UniqueConstraint('table', 'name', name='uniq field name per table'),
     )
 
 class Relation(Base):
-    _tablename_ = "relations"         
+    __tablename__= "relations"         
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     value_from = Column(UUID(as_uuid=True),ForeignKey("fields.id", ondelete="CASCADE"),nullable=False)
@@ -100,6 +100,10 @@ class Relation(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    _table_args_ = (
+    __table_args__ = (
         UniqueConstraint('value_from', 'value_to', name='only one relation between two fields'),
     )
+
+
+
+
