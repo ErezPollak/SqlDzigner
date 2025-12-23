@@ -43,7 +43,7 @@ function App() {
     <div className="App-root">
       {view === 'auth' && <Auth onAuth={handleAuth} />}
       {view === 'home' && (
-        <Home onOpenProfile={handleOpenProfile} onLogout={handleLogout} />
+        <Home userId={userId} onOpenProfile={handleOpenProfile} onLogout={handleLogout} />
       )}
       {view === 'profile' && (
         <ProfileDetail userId={userId} onBack={handleBackToHome} onAccountDeleted={handleLogout} />
