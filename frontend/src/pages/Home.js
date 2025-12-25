@@ -330,6 +330,23 @@ function SchemaManager({ userId }) {
       .then(() => setSchemas(schemas.filter((s) => s.id !== schemaId)))
       .finally(() => setSelectedSchema(null));
   };
+  
+  const exportSchema = async (schema) => {
+    try {
+      const res = await axios.get(`${API_BASE}/schemas/${schema.id}/export`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/sql' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `${schema.name || 'schema'}.sql`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setStatus({ type: 'success', text: 'Export started' });
+    } catch (err) {
+      console.error('Export failed', err);
+      setStatus({ type: 'error', text: 'Export failed: ' + (err?.response?.data || err.message) });
+    }
+  };
 /////////////////////////////
   const createTable = () => {
     if (!selectedSchema) {
@@ -473,6 +490,7 @@ function SchemaManager({ userId }) {
                 {selectedSchema?.id === schema.id ? 'Close' : 'View'}
               </button>
               <button className="chip danger" onClick={() => deleteSchema(schema.id)}>Delete</button>
+              <button className="chip" onClick={() => exportSchema(schema)}>Export</button>
             </div>
 
             {selectedSchema?.id === schema.id && (
