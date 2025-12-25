@@ -7,11 +7,13 @@ from passlib.context import CryptContext
 from fastapi import Header
 import hashlib
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 import models
 import schemas
 from schemas import *
 import database
+import io
 
 from fastapi import FastAPI, HTTPException, Depends, Path
 from sqlalchemy.orm import Session
@@ -184,6 +186,81 @@ def read_schema(schema_id: schemas.UUID4, db: Session = Depends(get_db)):
     if not schema:
         raise HTTPException(status_code=404, detail="Schema not found")
     return schema
+
+
+@app.get("/schemas/{schema_id}/export")
+def export_schema(schema_id: schemas.UUID4, db: Session = Depends(get_db)):
+    schema = db.query(Schema).filter(Schema.id == schema_id).first()
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
+
+    # gather tables, fields, relations
+    tables = db.query(Table).filter(Table.schema == schema_id).all()
+    table_map = {t.id: t for t in tables}
+    table_names = {t.id: t.name for t in tables}
+
+    # fields for these tables
+    table_ids = [t.id for t in tables]
+    fields = []
+    if table_ids:
+        fields = db.query(Field).filter(Field.table.in_(table_ids)).all()
+
+    fields_by_table = {}
+    for f in fields:
+        fields_by_table.setdefault(f.table, []).append(f)
+
+    # relations limited to fields in this schema
+    relations = db.query(Relation).all()
+    relations = [r for r in relations if r.value_from in [f.id for f in fields] and r.value_to in [f.id for f in fields]]
+
+    # map SQL types to reasonable DDL types
+    TYPE_MAP = {
+        'VARCHAR': 'VARCHAR(255)',
+        'INT': 'INTEGER',
+        'INTEGER': 'INTEGER',
+        'TEXT': 'TEXT',
+        'DATE': 'DATE',
+        'TIME': 'TIME',
+        'TIMESTAMP': 'TIMESTAMP',
+        'DATETIME': 'TIMESTAMP',
+        'BOOLEAN': 'BOOLEAN',
+        'FLOAT': 'REAL',
+        'DOUBLE': 'DOUBLE PRECISION',
+        'UUID': 'UUID',
+        'JSON': 'JSON',
+        'JSONB': 'JSONB'
+    }
+
+    statements = []
+    for t in tables:
+        cols = []
+        cols.append('    id UUID PRIMARY KEY')
+        for f in fields_by_table.get(t.id, []):
+            sql_type = TYPE_MAP.get(f.type, f.type)
+            # ensure safe column name
+            col = f'    "{f.name}" {sql_type}'
+            cols.append(col)
+        stmt = f'CREATE TABLE "{t.name}" (\n' + ',\n'.join(cols) + '\n);'
+        statements.append(stmt)
+
+    # add foreign key constraints from relations
+    for r in relations:
+        from_field = db.query(Field).filter(Field.id == r.value_from).first()
+        to_field = db.query(Field).filter(Field.id == r.value_to).first()
+        if not from_field or not to_field:
+            continue
+        from_table = table_map.get(from_field.table)
+        to_table = table_map.get(to_field.table)
+        if not from_table or not to_table:
+            continue
+        fk_stmt = f'ALTER TABLE "{from_table.name}" ADD FOREIGN KEY ("{from_field.name}") REFERENCES "{to_table.name}" ("{to_field.name}");'
+        statements.append(fk_stmt)
+
+    full_sql = "\n\n".join(statements) or "-- empty schema"
+
+    buffer = io.BytesIO(full_sql.encode('utf-8'))
+    filename = (schema.name or 'schema') + '.sql'
+    return StreamingResponse(buffer, media_type='text/sql', headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 @app.put("/schemas/{schema_id}", response_model=schemas.SchemaRead)
