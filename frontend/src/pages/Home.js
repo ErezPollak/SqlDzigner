@@ -13,6 +13,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from "uuid";
 import axios from 'axios';
 
+import EmlDialog from "./EmlDialog";
+
 
 
 
@@ -191,6 +193,9 @@ function SchemaManager({ userId }) {
   const [relationToField, setRelationToField] = useState(null);
   const [relationType, setRelationType] = useState(SQL_RELATION_TYPES[0]);
 
+   const [emlDialogOpen, setEmlDialogOpen] = useState(false);
+   const [emlSchema, setEmlDialogSchema] = useState({})
+
   // --- Fetch schemas for user ---
   useEffect(() => {
     if (!userId) return;
@@ -246,6 +251,31 @@ function SchemaManager({ userId }) {
         setSchemaFieldsLoaded(true);
         setStatus({ type: 'error', text: 'Failed to load fields for schema.' });
       });
+
+
+
+
+      axios
+      .get(`${API_BASE}/schemas/all/${selectedSchema.id}`)
+      .then((res) => {
+        setEmlDialogSchema(res.data || []);
+        setStatus(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        // If backend returns 404 or 204, treat as 'no fields yet' not an error
+        const code = err?.response?.status;
+        if (code === 404 || code === 204) {
+          setEmlDialogSchema([]);
+          setStatus({ type: 'info', text: 'No fields yet. Add one below.' });
+          return;
+        }
+        setStatus({ type: 'error', text: 'Failed to load fields for schema.' });
+      });
+
+
+      
+
   }, [selectedSchema]);
 
   // --- Fetch fields for selected table ---
@@ -443,6 +473,11 @@ function SchemaManager({ userId }) {
 
   return (
     <div>
+      <EmlDialog
+        open={emlDialogOpen}
+        onClose={() => setEmlDialogOpen(false)}
+        schema={emlSchema}
+      />
       <h2>My Schemas</h2>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <input
@@ -472,6 +507,11 @@ function SchemaManager({ userId }) {
               <button className={`chip ${selectedSchema?.id === schema.id ? 'ghost' : 'secondary'}`} onClick={() => setSelectedSchema(selectedSchema?.id === schema.id ? null : schema)}>
                 {selectedSchema?.id === schema.id ? 'Close' : 'View'}
               </button>
+              
+
+              {selectedSchema?.id === schema.id ? 
+              <button className={`chip ${selectedSchema?.id === schema.id ? 'ghost' : 'secondary'}`} onClick={() => setEmlDialogOpen(true)}>Show EML</button>
+               : ''}
               <button className="chip danger" onClick={() => deleteSchema(schema.id)}>Delete</button>
             </div>
 
