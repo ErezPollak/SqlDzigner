@@ -274,7 +274,7 @@ function SchemaManager({ userId }) {
       });
 
 
-      
+
 
   }, [selectedSchema]);
 
@@ -476,6 +476,7 @@ function SchemaManager({ userId }) {
       <EmlDialog
         open={emlDialogOpen}
         onClose={() => setEmlDialogOpen(false)}
+        
         schema={emlSchema}
       />
       <h2>My Schemas</h2>
