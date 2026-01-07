@@ -229,15 +229,31 @@ function SchemaManager({ userId }) {
   };
 
   // --- EXPORT (SIMULATION DOSSIER) ---
-  const exportAll = () => {
-    if (!dsdSvg) return;
-    const blob = new Blob([dsdSvg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${selectedSchema?.name || 'schema'}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportAll = async () => {
+    if (!dsdSvg || !selectedSchema) return;
+
+    // 1. Téléchargement du SVG (Image)
+    const svgBlob = new Blob([dsdSvg], { type: 'image/svg+xml' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const a1 = document.createElement('a');
+    a1.href = svgUrl;
+    a1.download = `${selectedSchema.name}_diagram.svg`;
+    a1.click();
+    URL.revokeObjectURL(svgUrl);
+
+    // 2. Téléchargement du code source Mermaid (Fichier texte)
+    try {
+      const res = await axios.get(`${API_BASE}/schemas/${selectedSchema.id}/dsd`);
+      const txtBlob = new Blob([res.data], { type: 'text/plain' });
+      const txtUrl = URL.createObjectURL(txtBlob);
+      const a2 = document.createElement('a');
+      a2.href = txtUrl;
+      a2.download = `${selectedSchema.name}_source_code.txt`;
+      a2.click();
+      URL.revokeObjectURL(txtUrl);
+    } catch (err) {
+      console.error("Erreur lors de la récupération du code source pour l'export", err);
+    }
   };
 
   return (
