@@ -60,3 +60,5 @@ class RelationCreate(BaseModel):
 
 class RelationRead(RelationCreate):
     id: UUID4
+class DSDResponse(BaseModel):
+    mermaid_code: str
