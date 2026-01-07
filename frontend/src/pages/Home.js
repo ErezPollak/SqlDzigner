@@ -12,3 +12,4 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { v4 as uuidv4 } from "uuid";
 import axios from 'axios';
+export default Home;
