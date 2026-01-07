@@ -107,6 +107,9 @@
 .right-col { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.03) }
 .right-col h3 { margin-top: 0 }
 
+/* DSD box */
+.dsd-box { background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.04); padding: 12px; border-radius: 10px; margin-top: 10px; overflow: auto; max-height: 520px }
+
 @media (max-width: 900px) {
   .split-grid { grid-template-columns: 1fr; }
   .right-col { order: 2 }

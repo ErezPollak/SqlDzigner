@@ -3,7 +3,7 @@ from database import Base
 
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
-
+from sqlalchemy.orm import relationship
 
 SQL_TYPES = (
     "INT",
@@ -62,6 +62,7 @@ class Schema(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    tables = relationship("Table", back_populates="_schema")
 
 class Table(Base):
     __tablename__ = "tables"         
@@ -71,6 +72,9 @@ class Table(Base):
     schema = Column(UUID(as_uuid=True),ForeignKey("schemas.id", ondelete="CASCADE"),nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    _schema = relationship("Schema", back_populates="tables")
+    fields = relationship("Field", back_populates="_table")
 
     __table_args__ = (
         UniqueConstraint('schema', 'name', name='uniq table name per schema'),
@@ -86,6 +90,10 @@ class Field(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    _table = relationship("Table", back_populates="fields")
+    relations_to = relationship("Relation", foreign_keys="Relation.value_to", back_populates="field_to")
+    relations_from = relationship("Relation", foreign_keys="Relation.value_from", back_populates="field_from")
+
     __table_args__= (
         UniqueConstraint('table', 'name', name='uniq field name per table'),
     )
@@ -99,6 +107,9 @@ class Relation(Base):
     type =  Column(Enum(*SQL_RELATION_TYPES, name='SQL_RELATION_TYPES'), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    field_to = relationship("Field", foreign_keys=[value_to] ,back_populates='relations_to')
+    field_from = relationship("Field", foreign_keys=[value_from] , back_populates='relations_from')
 
     __table_args__ = (
         UniqueConstraint('value_from', 'value_to', name='only one relation between two fields'),
