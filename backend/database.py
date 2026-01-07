@@ -3,6 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
 # On cherche la variable d'environnement, sinon on utilise SQLite par défaut
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 

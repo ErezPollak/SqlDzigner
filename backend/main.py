@@ -15,7 +15,7 @@ from schemas import *
 import database
 
 from fastapi import FastAPI, HTTPException, Depends, Path
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models import User, Schema, Table, Field, Relation
 
 def get_md5(s: str) -> str:
@@ -153,6 +153,23 @@ def create_schema(schema: schemas.SchemaCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_schema)
     return db_schema
+
+
+@app.get("/schemas/all/{schema_id}")
+def read_schema(schema_id: schemas.UUID4, db: Session = Depends(get_db)):
+
+    schema = (
+    db.query(Schema)
+    .options(
+        joinedload(Schema.tables).joinedload(Table.fields).joinedload(Field.relations_to)
+    )
+    .filter(Schema.id == schema_id)
+    .first())
+
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
+    return schema
+
 
 
 @app.get("/schemas/", response_model=list[schemas.SchemaRead])
