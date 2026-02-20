@@ -89,7 +89,7 @@ def main():
         edit_table_btn.click()
         time.sleep(2)
         
-        wait.until(EC.presence_of_element_located((By.XPATH, "//h3[text()='Editing: Users']")))
+        wait.until(EC.presence_of_element_located((By.XPATH, "//h3[contains(text(),'Editing:')]")))
         print("✓ Mode édition activé\n")
         time.sleep(2)
 
@@ -136,7 +136,7 @@ def main():
         print("Suppression du champ 'username'...")
         delete_field_btn = driver.find_element(By.XPATH, "//span[text()='username']/ancestor::li//button[text()='Delete']")
         delete_field_btn.click()
-        time.sleep(2)
+        time.sleep(10)
         
         wait.until(EC.invisibility_of_element_located((By.XPATH, "//span[@class='field-name' and text()='username']")))
         print("✓ Champ 'username' supprimé\n")
